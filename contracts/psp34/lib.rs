@@ -11,11 +11,29 @@ pub mod my_psp34_mintable {
 
     use openbrush::storage::Mapping;
 
+
+
+    #[derive(scale::Encode, scale::Decode, Debug, Clone, PartialEq, Default)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct Status {
+        pub hungry: u32,
+        pub health: u32,
+        pub happy: u32,
+    }
+
     #[derive(Default, Storage)]
     #[ink(storage)]
     pub struct Contract {
         #[storage_field]
         psp34: psp34::Data,
+
+        // pub asset_status: Mapping<Id, Status>,
+        pub asset_status: Mapping<Id, Status>,
+
+        pub test: Status,
 
         // this is three pattern uri
 
@@ -55,7 +73,7 @@ pub mod my_psp34_mintable {
         pub fn new() -> Self {
             Self::default()
         }
-
+        // normal
         #[ink(message)]
         pub fn set_normal_uri(&mut self, normal_uri:String) -> Result<(), String>{
             self.normal_uri = normal_uri;
@@ -67,6 +85,7 @@ pub mod my_psp34_mintable {
             self.normal_uri.clone()
         }
 
+        // good
         #[ink(message)]
         pub fn set_good_uri(&mut self, good_uri:String) -> Result<(), String>{
             self.good_uri = good_uri;
@@ -78,6 +97,7 @@ pub mod my_psp34_mintable {
             self.good_uri.clone()
         }
 
+        // bad
         #[ink(message)]
         pub fn set_bad_uri(&mut self, bad_uri:String) -> Result<(), String>{
             self.bad_uri = bad_uri;
@@ -87,6 +107,16 @@ pub mod my_psp34_mintable {
         #[ink(message)]
         pub fn get_bad_uri(&self) -> String {
             self.bad_uri.clone()
+        }
+
+        // #[ink(message)]
+        // pub fn get_status(&self, token_id: Id) -> Option<Status> {
+        //     self.asset_status.get(token_id)
+        // }
+
+        #[ink(message)]
+        pub fn gg(&self) -> Status {
+            self.test.clone()
         }
 
         
