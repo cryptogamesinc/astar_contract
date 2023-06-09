@@ -18,6 +18,7 @@ pub mod my_psp34_mintable {
         psp34: psp34::Data,
 
         // this is three pattern uri
+
         pub normal_uri: String,
         pub good_uri: String,
         pub bad_uri: String,
@@ -54,5 +55,42 @@ pub mod my_psp34_mintable {
         pub fn new() -> Self {
             Self::default()
         }
+
+        #[ink(message)]
+        pub fn set_normal_uri(&mut self, normal_uri:String) -> Result<(), String>{
+            self.normal_uri = normal_uri;
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn get_normal_uri(&self) -> String {
+            self.normal_uri.clone()
+        }
+
+        #[ink(message)]
+        pub fn set_good_uri(&mut self, good_uri:String) -> Result<(), String>{
+            self.good_uri = good_uri;
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn get_good_uri(&self) -> String {
+            self.good_uri.clone()
+        }
+
+        #[ink(message)]
+        pub fn set_bad_uri(&mut self, bad_uri:String) -> Result<(), String>{
+            self.bad_uri = bad_uri;
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn get_bad_uri(&self) -> String {
+            self.bad_uri.clone()
+        }
+
+        
+
+        
     }
 }
