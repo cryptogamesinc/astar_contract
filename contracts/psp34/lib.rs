@@ -12,7 +12,6 @@ pub mod my_psp34_mintable {
     use openbrush::storage::Mapping;
 
 
-
     #[derive(scale::Encode, scale::Decode, Debug, Clone, PartialEq, Default)]
     #[cfg_attr(
         feature = "std",
@@ -32,8 +31,6 @@ pub mod my_psp34_mintable {
 
         // pub asset_status: Mapping<Id, Status>,
         pub asset_status: Mapping<Id, Status>,
-
-        pub test: Status,
 
         // this is three pattern uri
 
@@ -110,16 +107,40 @@ pub mod my_psp34_mintable {
         }
 
         // #[ink(message)]
-        // pub fn get_status(&self, token_id: Id) -> Option<Status> {
-        //     self.asset_status.get(token_id)
+        // pub fn ensure_exists_and_get_owner(&self, id: Id) -> Result<AccountId, String> {
+        //     let token_owner = self
+        //         .data::<psp34::Data<enumerable::Balances>>()
+        //         .owner_of(id.clone())
+        //         .ok_or(PSP34Error::TokenNotExists)?;
+        //     Ok(token_owner)
         // }
 
         #[ink(message)]
-        pub fn gg(&self) -> Status {
-            self.test.clone()
+        pub fn set_status (
+            &mut self,
+            token_id: Id, 
+            hungry: u32,
+            health: u32,
+            happy: u32
+        ) -> Result<(), String>{ 
+            // こちら、実装する必要あり！！！
+            // self.ensure_exists_and_get_owner(&token_id)?;
+            self.asset_status
+                .insert(
+                    &token_id,
+                    &Status {
+                        hungry,
+                        health,
+                        happy,
+                    },
+                );
+            Ok(())
         }
 
-        
+        #[ink(message)]
+        pub fn get_status(&self, token_id: Id) -> Option<Status> {
+            self.asset_status.get(&token_id)
+        }     
 
         
     }
