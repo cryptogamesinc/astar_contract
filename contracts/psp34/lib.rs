@@ -128,9 +128,8 @@ pub mod my_psp34_mintable {
             hungry: u32,
             health: u32,
             happy: u32
-        ) -> Result<(), String>{ 
-            // こちら、実装する必要あり！！！
-            // self.ensure_exists_and_get_owner(&token_id)?;
+        ) -> Result<(), PSP34Error>{ 
+            self.ensure_exists_and_get_owner(token_id.clone())?;
             self.asset_status
                 .insert(
                     &token_id,
@@ -144,9 +143,62 @@ pub mod my_psp34_mintable {
         }
 
         #[ink(message)]
+        pub fn set_full_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
+            self.set_status(token_id, 0, 100, 100)
+        }
+
+        #[ink(message)]
+        pub fn set_death_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
+            self.set_status(token_id, 80, 0, 0)
+        }
+
+        #[ink(message)]
         pub fn get_status(&self, token_id: Id) -> Option<Status> {
             self.asset_status.get(&token_id)
-        }     
+        }
+
+        #[ink(message)]
+        pub fn get_current_status(&self, token_id: Id) -> Option<Status> {
+
+            //　get the current time
+            let current_time = Self::env().block_timestamp();
+    
+             // get the last eaten time
+             let last_checked_time = self
+                .last_eaten
+                .get(&token_id)
+                .unwrap_or(Default::default());
+            if last_checked_time == 0 {
+                return Some(Status {
+                    hungry: 0,
+                    health: 0,
+                    happy: 0,
+                });
+            } else {
+            
+                let past_time = current_time - last_checked_time;
+    
+                // 60 seconds（60 ※ 1000 miliseconds）
+                let past_day = past_time / (60 * 1000) ;
+                // Assuming a hypothetical decrease of 5 per unit
+                let change_status = past_day * 5;
+    
+                let original_status = self.get_status(token_id.clone()).unwrap_or_else(|| {
+                    // In case the token_id doesn't exist in the asset_status map, we just return a default status with all fields set to 0.
+                    Status { hungry: 0, health: 0, happy: 0 }
+                });
+    
+                let new_hungy_status = original_status.hungry + (change_status as u32);
+                let new_health_status = original_status.health.saturating_sub(change_status as u32);
+                let new_happy_status = original_status.happy.saturating_sub(change_status as u32);
+    
+                return Some(Status {
+                    hungry: new_hungy_status,
+                    health: new_health_status,
+                    happy: new_happy_status,
+                });
+            }
+        }
 
         
     }
