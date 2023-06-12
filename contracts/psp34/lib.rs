@@ -200,6 +200,30 @@ pub mod my_psp34_mintable {
             }
         }
 
+        #[ink(message)]
+        pub fn change_some_status(&mut self, token_id: Id, number: u32) -> Result<()> {
+            let original_status = self.get_current_status(token_id.clone()).unwrap_or_else(|| {
+                // In case the token_id doesn't exist in the asset_status map, we just return a default status with all fields set to 0.
+                Status { hungry: 0, health: 0, happy: 0 }
+            });
+    
+            let hungry_status: u32;
+            if original_status.hungry > number {
+                hungry_status = original_status.hungry - number;
+            } else {
+                hungry_status = 0;
+            }
         
+            let new_status = Status {
+                hungry: hungry_status,
+                health: original_status.health + number,
+                happy: original_status.happy + number,
+            };
+        
+            self
+                .asset_status
+                .insert(token_id, &new_status);
+            Ok(())
+        }
     }
 }
