@@ -201,7 +201,7 @@ pub mod my_psp34_mintable {
         }
 
         #[ink(message)]
-        pub fn change_some_status(&mut self, token_id: Id, number: u32) -> Result<()> {
+        pub fn change_some_status(&mut self, token_id: Id, number: u32) -> Result<(), PSP34Error> {
             let original_status = self.get_current_status(token_id.clone()).unwrap_or_else(|| {
                 // In case the token_id doesn't exist in the asset_status map, we just return a default status with all fields set to 0.
                 Status { hungry: 0, health: 0, happy: 0 }
@@ -222,8 +222,61 @@ pub mod my_psp34_mintable {
         
             self
                 .asset_status
-                .insert(token_id, &new_status);
+                .insert(&token_id, &new_status);
             Ok(())
         }
+
+        #[ink(message)]
+        pub fn set_lucky_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
+            self.change_some_status(token_id.clone(),50)
+        }
+
+        #[ink(message)]
+        pub fn get_total_status(&self, token_id: Id) -> u32 {
+            let original_status = self.get_current_status(token_id.clone()).unwrap_or_else(|| {
+                // In case the token_id doesn't exist in the asset_status map, we just return a default status with all fields set to 0.
+                Status { hungry: 0, health: 0, happy: 0 }
+            });
+        
+            let new_status = Status {
+                hungry: original_status.hungry,
+                health: original_status.health,
+                happy: original_status.happy,
+            };
+    
+            let total_status = new_status.health as i32 + new_status.happy as i32 - new_status.hungry as i32;
+            let result = if total_status > 0 { total_status } else { 0 };
+            result as u32
+        }
+
+        #[ink(message)]
+        pub fn get_condition(&self , token_id: Id) -> u32 {
+            let condition = self.get_total_status(token_id);
+            // bad condition
+            if condition < 100 {
+                0
+            } 
+            // normal condition
+            else if condition < 200 {
+                1
+            } 
+            // good condition
+            else {
+                2
+            }
+        }
+
+        #[ink(message)]
+        pub fn get_condition_url(&self , token_id: Id) -> String {
+            let condition = self.get_condition(token_id);
+            if condition == 0 {
+                self.get_bad_uri()
+            } else if condition == 1 {
+                self.get_normal_uri()
+            } else {
+                self.get_good_uri()
+            }
+        }
+    
     }
 }
