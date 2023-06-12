@@ -5,6 +5,7 @@
 pub mod my_psp34_mintable {
     use openbrush::{
         contracts::psp34::extensions::mintable::*,
+        contracts::psp34::extensions::enumerable::*,
         traits::Storage,
     };
     use openbrush::traits::String;
@@ -26,8 +27,11 @@ pub mod my_psp34_mintable {
     #[derive(Default, Storage)]
     #[ink(storage)]
     pub struct Contract {
+        // #[storage_field]
+        // psp34: psp34::Data,
+
         #[storage_field]
-        psp34: psp34::Data,
+        psp34: psp34::Data<enumerable::Balances>,
 
         // pub asset_status: Mapping<Id, Status>,
         pub asset_status: Mapping<Id, Status>,
@@ -63,6 +67,8 @@ pub mod my_psp34_mintable {
     impl PSP34 for Contract {}
 
     impl PSP34Mintable for Contract {}
+
+    impl PSP34Enumerable for Contract {}
 
     impl Contract {
         /// The constructor
@@ -106,14 +112,14 @@ pub mod my_psp34_mintable {
             self.bad_uri.clone()
         }
 
-        // #[ink(message)]
-        // pub fn ensure_exists_and_get_owner(&self, id: Id) -> Result<AccountId, String> {
-        //     let token_owner = self
-        //         .data::<psp34::Data<enumerable::Balances>>()
-        //         .owner_of(id.clone())
-        //         .ok_or(PSP34Error::TokenNotExists)?;
-        //     Ok(token_owner)
-        // }
+        #[ink(message)]
+        pub fn ensure_exists_and_get_owner(&self, id: Id) -> Result<AccountId, PSP34Error> {
+            let token_owner = self
+                .psp34
+                .owner_of(id.clone())
+                .ok_or(PSP34Error::TokenNotExists)?;
+            Ok(token_owner)
+        }
 
         #[ink(message)]
         pub fn set_status (
