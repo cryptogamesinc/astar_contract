@@ -26,10 +26,12 @@ pub mod my_psp34_mintable {
         pub happy: u32,
     }
 
-    // #[derive(PartialEq, Eq, Copy, Clone, codec::Encode, codec::Decode, sp_std::RuntimeDebug)]
-    // pub enum ContractError {
-    //     NotEnoughMoney,
-    // }
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+    pub enum ContractError {
+        NotEnoughMoney,
+        NotEnoughApple
+    }
 
 
 
@@ -312,11 +314,8 @@ pub mod my_psp34_mintable {
         }
 
         #[ink(message)]
-        pub fn set_your_money(&mut self, account_id: AccountId, after_money: u64) -> Result<(), PSP34Error> {
-            self
-                .your_money
-                .insert(&account_id, &after_money);
-            Ok(())
+        pub fn set_your_money(&mut self, account_id: AccountId, after_money: u64)  {
+            self.your_money.insert(&account_id, &after_money);
         }
 
         // #[ink(message)]
@@ -352,28 +351,61 @@ pub mod my_psp34_mintable {
             }
         }
 
-        // #[ink(message)]
-        // pub fn withdraw_your_money(&mut self, account_id: AccountId) -> Result<(), ContractError> {
-        //     let staked_money = self.get_your_staked_money(account_id);
+        #[ink(message)]
+        pub fn withdraw_your_money(&mut self, account_id: AccountId) -> Result<(), ContractError> {
+            let staked_money = self.get_your_staked_money(account_id);
     
-        //     let current_money = self.get_your_money(account_id.clone());
+            let current_money = self.get_your_money(account_id.clone());
     
-        //     if staked_money == 0 {
-        //         Err(ContractError::NotEnoughMoney.into())
-        //     } else {
-        //         let result_money = current_money + staked_money;
-        //         // set your_staked_money 0
-        //         self
-        //         .your_staked_money
-        //         .insert(&account_id, &0);
+            if staked_money == 0 {
+                Err(ContractError::NotEnoughMoney.into())
+            } else {
+                let result_money = current_money + staked_money;
+                // set your_staked_money 0
+                self
+                .your_staked_money
+                .insert(&account_id, &0);
     
-        //         // set your_money 
-        //         self
-        //             .your_money
-        //             .insert(&account_id, &result_money);
-        //         Ok(())
-        //     }
-        // }
+                // set your_money 
+                self
+                    .your_money
+                    .insert(&account_id, &result_money);
+                Ok(())
+            }
+        }
+
+        #[ink(message)]
+        pub fn minus_your_apple(&mut self, account_id: AccountId) -> Result<(), ContractError> {
+        
+            // get apple number
+            let apple_number = self.get_your_apple(account_id);
+    
+            if apple_number < 1 {
+                Err(ContractError::NotEnoughApple.into())
+            } else {
+                let after_apple = apple_number - 1;
+    
+                self
+                .apple_number
+                .insert(&account_id, &after_apple);
+                Ok(())
+            }
+        }
+
+        #[ink(message)]
+        pub fn minus_your_money(&mut self, account_id: AccountId, change_money: u64) -> Result<(), ContractError> {
+        
+            // get current game money
+            let money = self.get_your_money(account_id);
+    
+            if money < change_money {
+                Err(ContractError::NotEnoughMoney.into())
+            } else {
+                let after_money = money - change_money;
+                self.set_your_money(account_id, after_money);
+                Ok(())
+            }
+        }
     
     }
 }
