@@ -14,6 +14,8 @@ pub mod my_psp34_mintable {
 
     use ink::prelude::string::ToString;
 
+    use core::{time::Duration};
+
 
     #[derive(scale::Encode, scale::Decode, Debug, Clone, PartialEq, Default)]
     #[cfg_attr(
@@ -30,7 +32,9 @@ pub mod my_psp34_mintable {
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum ContractError {
         NotEnoughMoney,
-        NotEnoughApple
+        NotEnoughApple,
+        InvalidAccountId,
+        TimeHasNotPassed
     }
 
 
@@ -87,6 +91,29 @@ pub mod my_psp34_mintable {
         pub fn new() -> Self {
             Self::default()
         }
+
+        #[ink(message)]
+        pub fn has_passed(&self, check_time :u64, last_time :u64) -> bool{
+            let current_time = Self::env().block_timestamp();
+            let time_since_last_time = current_time - last_time;
+            let duration_time = Duration::from_secs(check_time);
+            if Duration::from_millis(time_since_last_time) > duration_time {
+                true
+            } else {
+                false
+            }
+        }
+
+        #[ink(message)]
+        pub fn five_minutes_has_passed(&self, last_time :u64) -> bool{
+            self.has_passed(60,last_time)
+        }
+
+        #[ink(message)]
+        pub fn one_day_has_passed(&self, last_time :u64) -> bool{
+            self.has_passed(60 * 60 * 24 ,last_time)
+        }
+    
         // normal
         #[ink(message)]
         pub fn set_normal_uri(&mut self, normal_uri:String) -> Result<(), String>{
@@ -375,7 +402,7 @@ pub mod my_psp34_mintable {
         }
 
         #[ink(message)]
-        pub fn minus_your_apple(&mut self, account_id: AccountId) -> Result<(), ContractError> {
+        pub fn subtract_your_apple(&mut self, account_id: AccountId) -> Result<(), ContractError> {
         
             // get apple number
             let apple_number = self.get_your_apple(account_id);
@@ -393,7 +420,7 @@ pub mod my_psp34_mintable {
         }
 
         #[ink(message)]
-        pub fn minus_your_money(&mut self, account_id: AccountId, change_money: u64) -> Result<(), ContractError> {
+        pub fn subtract_your_money(&mut self, account_id: AccountId, change_money: u64) -> Result<(), ContractError> {
         
             // get current game money
             let money = self.get_your_money(account_id);
@@ -406,6 +433,61 @@ pub mod my_psp34_mintable {
                 Ok(())
             }
         }
+
+        #[ink(message)]
+        pub fn plus_your_money(&mut self, account_id: AccountId, change_money: u64) {
+        
+            // get current game money
+            let money = self.get_your_money(account_id);
+    
+            let after_money = money + change_money;
+            self.set_your_money(account_id, after_money);
+        }
+
+        #[ink(message)]
+        pub fn get_last_eaten(&self, token_id: Id) -> u64 {
+            self.last_eaten.get(&token_id).unwrap_or(Default::default())
+        }
+        
+        #[ink(message)]
+        pub fn set_last_eaten(&mut self, token_id: Id, current_time: u64) {
+            self.last_eaten.insert(&token_id, &current_time);
+        }
+        
+        #[ink(message)]
+        pub fn get_last_bonus(&self, account_id: AccountId) -> u64 {
+            self.last_bonus.get(&account_id).unwrap_or(Default::default())
+        }
+        
+        #[ink(message)]
+        pub fn set_last_bonus(&mut self, account_id: AccountId, current_time: u64) {
+            self.last_bonus.insert(&account_id, &current_time);
+        }
+
+        #[ink(message)]
+        pub fn daily_bonus(&mut self, account_id: AccountId) -> Result<(), ContractError> {
+
+            // Get the time when the last bonus was obtained. In case of error, return 0 
+            let last_bonus = self.get_last_bonus(account_id);
+            // Function of whether a predetermined amount of time has elapsed.
+            let has_passed = self.five_minutes_has_passed(last_bonus);
+
+            //  If the allotted time has not elapsed
+            if has_passed ==false {
+                Err(ContractError::TimeHasNotPassed.into())
+            } else {
+            //　Get the current time
+            let current_time = Self::env().block_timestamp();
+            //  Put current time in last_bonus
+            self.set_last_bonus(account_id, current_time);
+
+            let after_money = self.get_your_money(account_id) + 100;
+            self.set_your_money(account_id, after_money);
+
+            Ok(())
+            }
+        }
+        
     
     }
 }
