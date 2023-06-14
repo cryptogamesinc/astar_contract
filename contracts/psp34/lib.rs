@@ -12,6 +12,8 @@ pub mod my_psp34_mintable {
 
     use openbrush::storage::Mapping;
 
+    use ink::prelude::string::ToString;
+
 
     #[derive(scale::Encode, scale::Decode, Debug, Clone, PartialEq, Default)]
     #[cfg_attr(
@@ -23,6 +25,13 @@ pub mod my_psp34_mintable {
         pub health: u32,
         pub happy: u32,
     }
+
+    // #[derive(PartialEq, Eq, Copy, Clone, codec::Encode, codec::Decode, sp_std::RuntimeDebug)]
+    // pub enum ContractError {
+    //     NotEnoughMoney,
+    // }
+
+
 
     #[derive(Default, Storage)]
     #[ink(storage)]
@@ -277,6 +286,94 @@ pub mod my_psp34_mintable {
                 self.get_good_uri()
             }
         }
+
+        #[ink(message)]
+        pub fn get_your_apple(&self, account_id: AccountId) -> u16 {
+            self
+                .apple_number
+                .get(&account_id)
+                .unwrap_or_default()
+        }
+
+        #[ink(message)]
+        pub fn set_your_apple(&mut self, account_id: AccountId, after_apple: u16) -> Result<(), PSP34Error> {
+            self
+                .apple_number
+                .insert(&account_id, &after_apple);
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn get_your_money(&self, account_id: AccountId) -> u64 {
+            self
+                .your_money
+                .get(&account_id)
+                .unwrap_or_default()
+        }
+
+        #[ink(message)]
+        pub fn set_your_money(&mut self, account_id: AccountId, after_money: u64) -> Result<(), PSP34Error> {
+            self
+                .your_money
+                .insert(&account_id, &after_money);
+            Ok(())
+        }
+
+        // #[ink(message)]
+        // pub fn stake_your_money(&mut self, account_id: AccountId, stake_money: u64) -> Result<()> {
+        // }
+
+        #[ink(message)]
+        pub fn get_your_staked_money(&self, account_id: AccountId) -> u64 {
+
+            //　get the current time
+            let current_time = Self::env().block_timestamp();
+    
+            // get your_staked_money
+            let staked_money = self
+                .your_staked_money
+                .get(&account_id)
+                .unwrap_or(Default::default());
+    
+            // get last_staked_time
+            let last_staked_time = self
+                .last_staked
+                .get(&account_id)
+                .unwrap_or(Default::default());
+            if last_staked_time == 0 || staked_money == 0 {
+                return 0
+            } else {
+                let past_time = current_time - last_staked_time;
+                // 60 seconds（60 ※ 1000 miliseconds）
+                let past_day = past_time / (10 * 1000) ;
+                // Assuming a hypothetical decrease of 5 per unit
+                let change_patio = past_day * 1;
+                return staked_money + staked_money * change_patio / 100
+            }
+        }
+
+        // #[ink(message)]
+        // pub fn withdraw_your_money(&mut self, account_id: AccountId) -> Result<(), ContractError> {
+        //     let staked_money = self.get_your_staked_money(account_id);
+    
+        //     let current_money = self.get_your_money(account_id.clone());
+    
+        //     if staked_money == 0 {
+        //         Err(ContractError::NotEnoughMoney.into())
+        //     } else {
+        //         let result_money = current_money + staked_money;
+        //         // set your_staked_money 0
+        //         self
+        //         .your_staked_money
+        //         .insert(&account_id, &0);
+    
+        //         // set your_money 
+        //         self
+        //             .your_money
+        //             .insert(&account_id, &result_money);
+        //         Ok(())
+        //     }
+        // }
     
     }
 }
