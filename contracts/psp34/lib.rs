@@ -91,6 +91,13 @@ pub mod my_psp34_mintable {
         pub fn new() -> Self {
             Self::default()
         }
+        fn set_default(&mut self, account_id: AccountId) {
+            self.set_bad_uri(String::from("ipfs://QmV1VxGsrM4MLNn1qwR9Hmu5DGFfWjzHmhHFXpTT2fevMQ/"));
+            self.set_normal_uri(String::from("ipfs://QmTBf9GJLiw97v84Q7aEPPFHUXdyqXWC6AUp97VnLFZtWr/"));
+            self.set_good_uri(String::from("ipfs://QmQUxL1RSWbZAWhQfWnJJrMVZsPm4Stc5C64kRuSnXe56Q/"));
+            self.set_your_apple(account_id, 10);
+            self.set_your_money(account_id, 500);
+        }
 
         #[ink(message)]
         pub fn has_passed(&self, check_time :u64, last_time :u64) -> bool{
@@ -116,9 +123,8 @@ pub mod my_psp34_mintable {
     
         // normal
         #[ink(message)]
-        pub fn set_normal_uri(&mut self, normal_uri:String) -> Result<(), String>{
+        pub fn set_normal_uri(&mut self, normal_uri:String) {
             self.normal_uri = normal_uri;
-            Ok(())
         }
 
         #[ink(message)]
@@ -128,9 +134,8 @@ pub mod my_psp34_mintable {
 
         // good
         #[ink(message)]
-        pub fn set_good_uri(&mut self, good_uri:String) -> Result<(), String>{
+        pub fn set_good_uri(&mut self, good_uri:String) {
             self.good_uri = good_uri;
-            Ok(())
         }
 
         #[ink(message)]
@@ -140,9 +145,8 @@ pub mod my_psp34_mintable {
 
         // bad
         #[ink(message)]
-        pub fn set_bad_uri(&mut self, bad_uri:String) -> Result<(), String>{
+        pub fn set_bad_uri(&mut self, bad_uri:String) {
             self.bad_uri = bad_uri;
-            Ok(())
         }
 
         #[ink(message)]
@@ -168,15 +172,7 @@ pub mod my_psp34_mintable {
             happy: u32
         ) -> Result<(), PSP34Error>{ 
             self.ensure_exists_and_get_owner(token_id.clone())?;
-            self.asset_status
-                .insert(
-                    &token_id,
-                    &Status {
-                        hungry,
-                        health,
-                        happy,
-                    },
-                );
+            self.asset_status.insert(&token_id,&Status {hungry,health,happy});
             Ok(())
         }
 
@@ -239,7 +235,7 @@ pub mod my_psp34_mintable {
         }
 
         #[ink(message)]
-        pub fn change_some_status(&mut self, token_id: Id, number: u32) -> Result<(), PSP34Error> {
+        pub fn change_some_status(&mut self, token_id: Id, number: u32) {
             let original_status = self.get_current_status(token_id.clone()).unwrap_or_else(|| {
                 // In case the token_id doesn't exist in the asset_status map, we just return a default status with all fields set to 0.
                 Status { hungry: 0, health: 0, happy: 0 }
@@ -261,11 +257,10 @@ pub mod my_psp34_mintable {
             self
                 .asset_status
                 .insert(&token_id, &new_status);
-            Ok(())
         }
 
         #[ink(message)]
-        pub fn set_lucky_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
+        pub fn set_lucky_status(&mut self, token_id: Id) {
             self.change_some_status(token_id.clone(),50)
         }
 
@@ -325,19 +320,13 @@ pub mod my_psp34_mintable {
         }
 
         #[ink(message)]
-        pub fn set_your_apple(&mut self, account_id: AccountId, after_apple: u16) -> Result<(), PSP34Error> {
-            self
-                .apple_number
-                .insert(&account_id, &after_apple);
-            Ok(())
+        pub fn set_your_apple(&mut self, account_id: AccountId, after_apple: u16) {
+            self.apple_number.insert(&account_id, &after_apple);
         }
 
         #[ink(message)]
         pub fn get_your_money(&self, account_id: AccountId) -> u64 {
-            self
-                .your_money
-                .get(&account_id)
-                .unwrap_or_default()
+            self.your_money.get(&account_id).unwrap_or_default()
         }
 
         #[ink(message)]
@@ -345,9 +334,36 @@ pub mod my_psp34_mintable {
             self.your_money.insert(&account_id, &after_money);
         }
 
-        // #[ink(message)]
-        // pub fn stake_your_money(&mut self, account_id: AccountId, stake_money: u64) -> Result<()> {
-        // }
+        #[ink(message)]
+        pub fn stake_your_money(&mut self, account_id: AccountId, stake_money: u64) -> Result<(), ContractError> {
+
+            //　get the current time
+            let current_time = Self::env().block_timestamp();
+
+            //　get the current money
+            let current_money = self.get_your_money(account_id.clone());
+
+            //　get the current staked money
+            let current_staked_money = self.get_your_staked_money(account_id.clone());
+
+            if current_money == 0 || current_money < stake_money {
+                Err(ContractError::NotEnoughMoney.into())
+            } else {
+                let after_money = current_money - stake_money;
+
+                let after_staked_money = current_staked_money + stake_money;
+                // set your_money 0
+                self.your_money.insert(&account_id, &after_money);
+
+                // set your_staked_money
+                self.your_staked_money.insert(&account_id, &after_staked_money);
+
+                // set last_staked
+                self.last_staked.insert(&account_id, &current_time);
+                Ok(())
+            }
+        }
+
 
         #[ink(message)]
         pub fn get_your_staked_money(&self, account_id: AccountId) -> u64 {
@@ -485,6 +501,27 @@ pub mod my_psp34_mintable {
             self.set_your_money(account_id, after_money);
 
             Ok(())
+            }
+        }
+
+        #[ink(message)]
+        pub fn is_nft_owner(&self, token_id: Id) -> bool {
+            let token_owner = self.owner_of(token_id.clone()).unwrap();
+    
+            if token_owner == Self::env().caller() {
+                true
+            } else {
+                false
+            }
+        }
+
+        #[ink(message)]
+        pub fn is_account_id(&self, account_id: AccountId) -> bool {
+            let caller = Self::env().caller();
+            if caller == account_id {
+                true
+            } else {
+                false
             }
         }
         
