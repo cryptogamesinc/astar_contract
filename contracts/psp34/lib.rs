@@ -16,6 +16,9 @@ pub mod my_psp34_mintable {
 
     use core::{time::Duration};
 
+    use ink::env::hash;
+
+    use ink::prelude::vec::Vec;
 
     #[derive(scale::Encode, scale::Decode, Debug, Clone, PartialEq, Default)]
     #[cfg_attr(
@@ -31,13 +34,18 @@ pub mod my_psp34_mintable {
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum ContractError {
+        PSP34Error,
         NotEnoughMoney,
         NotEnoughApple,
         InvalidAccountId,
         TimeHasNotPassed
     }
 
-
+    impl From<PSP34Error> for ContractError {
+        fn from(_: PSP34Error) -> Self {
+            Self::PSP34Error
+        }
+    }
 
     #[derive(Default, Storage)]
     #[ink(storage)]
@@ -91,7 +99,21 @@ pub mod my_psp34_mintable {
         pub fn new() -> Self {
             Self::default()
         }
-        fn set_default(&mut self, account_id: AccountId) {
+        #[ink(message)]
+        pub fn get_pseudo_random(&mut self, max_value: u8) -> u8 {
+            let seed = Self::env().block_timestamp();
+            let mut input: Vec<u8> = Vec::new();
+            input.extend_from_slice(&seed.to_be_bytes());
+            input.extend_from_slice(&self.salt.to_be_bytes());
+            let mut output = <hash::Keccak256 as hash::HashOutput>::Type::default();
+            ink::env::hash_bytes::<hash::Keccak256>(&input, &mut output);
+            self.salt += 1;
+            let number = output[0] % (max_value + 1);
+            number
+        }
+        
+        #[ink(message)]
+        pub fn set_default(&mut self, account_id: AccountId) {
             self.set_bad_uri(String::from("ipfs://QmV1VxGsrM4MLNn1qwR9Hmu5DGFfWjzHmhHFXpTT2fevMQ/"));
             self.set_normal_uri(String::from("ipfs://QmTBf9GJLiw97v84Q7aEPPFHUXdyqXWC6AUp97VnLFZtWr/"));
             self.set_good_uri(String::from("ipfs://QmQUxL1RSWbZAWhQfWnJJrMVZsPm4Stc5C64kRuSnXe56Q/"));
@@ -178,12 +200,14 @@ pub mod my_psp34_mintable {
 
         #[ink(message)]
         pub fn set_full_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
-            self.set_status(token_id, 0, 100, 100)
+            self.set_status(token_id, 0, 100, 100)?;
+            Ok(())
         }
 
         #[ink(message)]
         pub fn set_death_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
-            self.set_status(token_id, 80, 0, 0)
+            self.set_status(token_id, 80, 0, 0)?;
+            Ok(())
         }
 
         #[ink(message)]
@@ -235,7 +259,8 @@ pub mod my_psp34_mintable {
         }
 
         #[ink(message)]
-        pub fn change_some_status(&mut self, token_id: Id, number: u32) {
+        pub fn change_some_status(&mut self, token_id: Id, number: u32) -> Result<(), PSP34Error> {
+            self.ensure_exists_and_get_owner(token_id.clone())?;
             let original_status = self.get_current_status(token_id.clone()).unwrap_or_else(|| {
                 // In case the token_id doesn't exist in the asset_status map, we just return a default status with all fields set to 0.
                 Status { hungry: 0, health: 0, happy: 0 }
@@ -257,11 +282,13 @@ pub mod my_psp34_mintable {
             self
                 .asset_status
                 .insert(&token_id, &new_status);
+            Ok(())
         }
 
         #[ink(message)]
-        pub fn set_lucky_status(&mut self, token_id: Id) {
-            self.change_some_status(token_id.clone(),50)
+        pub fn set_lucky_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
+            self.change_some_status(token_id.clone(),50)?;
+            Ok(())
         }
 
         #[ink(message)]
@@ -309,6 +336,75 @@ pub mod my_psp34_mintable {
             } else {
                 self.get_good_uri()
             }
+        }
+
+        #[ink(message)]
+        pub fn eat_an_apple(&mut self, token_id: Id, account_id: AccountId) -> Result<(),ContractError> {
+
+            // get last eaten time
+            let last_eaten = self.get_last_eaten(token_id.clone());
+            // get whether time passed
+            let has_passed = self.five_minutes_has_passed(last_eaten);
+
+            if has_passed ==false {
+                Err(ContractError::TimeHasNotPassed.into())
+            } else {
+                // get current time 
+                let current_time = Self::env().block_timestamp();
+                //  set last eaten time
+                self.set_last_eaten(token_id.clone(), current_time);
+                //  minus apple
+                self.subtract_your_apple(account_id)?;
+
+                // branching by pseudo random
+                let random = self.get_pseudo_random(100);
+                if random < 25 {
+                    self.change_some_status(token_id, 30)?;
+                    Ok(())
+                } else if random < 50 {
+                    self.set_full_status(token_id)?;
+                    Ok(())
+                } else if random < 75 {
+                    self.set_lucky_status(token_id)?;
+                    Ok(())
+                } else {
+                    self.set_death_status(token_id)?;
+                    Ok(())
+                } 
+            }
+        }
+        #[ink(message)]
+        pub fn token_uri(&self , token_id: Id) -> String {
+            let id_string:ink::prelude::string::String = match token_id.clone() {
+                Id::U8(u8) => {
+                    let tmp: u8 = u8;
+                    tmp.to_string()
+                }
+                Id::U16(u16) => {
+                    let tmp: u16 = u16;
+                    tmp.to_string()
+                }
+                Id::U32(u32) => {
+                    let tmp: u32 = u32;
+                    tmp.to_string()
+                }
+                Id::U64(u64) => {
+                    let tmp: u64 = u64;
+                    tmp.to_string()
+                }
+                Id::U128(u128) => {
+                    let tmp: u128 = u128;
+                    tmp.to_string()
+                }
+                // _ => "0".to_string()
+                Id::Bytes(value) => ink::prelude::string::String::from_utf8(value.clone()).unwrap(),
+            };
+    
+            let base_uri:String = self.get_condition_url(token_id.clone());
+            let tmp_uri: ink::prelude::string::String = ink::prelude::string::String::from_utf8(base_uri).unwrap();
+            let uri:ink::prelude::string::String = tmp_uri + &id_string;
+    
+            uri.into_bytes()
         }
 
         #[ink(message)]
