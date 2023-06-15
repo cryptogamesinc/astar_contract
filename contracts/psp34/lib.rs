@@ -4,21 +4,29 @@
 #[openbrush::contract]
 pub mod my_psp34_mintable {
     use openbrush::{
-        contracts::psp34::extensions::mintable::*,
-        contracts::psp34::extensions::enumerable::*,
-        traits::Storage,
+        contracts::{
+            ownable::*,
+            psp34::extensions::{
+                enumerable::*,
+                mintable::*,
+            },
+        },
+        traits::{
+            Storage,
+            String,
+        },
+        storage::Mapping,
+        modifiers,
     };
-    use openbrush::traits::String;
-
-    use openbrush::storage::Mapping;
-
-    use ink::prelude::string::ToString;
-
-    use core::{time::Duration};
-
+    
     use ink::env::hash;
 
-    use ink::prelude::vec::Vec;
+    use ink::prelude::{
+        string::ToString,
+        vec::Vec,
+    };
+
+    use core::{time::Duration};
 
     #[derive(scale::Encode, scale::Decode, Debug, Clone, PartialEq, Default)]
     #[cfg_attr(
@@ -55,6 +63,9 @@ pub mod my_psp34_mintable {
 
         #[storage_field]
         psp34: psp34::Data<enumerable::Balances>,
+
+        #[storage_field]
+        ownable: ownable::Data,
 
         // pub asset_status: Mapping<Id, Status>,
         pub asset_status: Mapping<Id, Status>,
@@ -99,7 +110,7 @@ pub mod my_psp34_mintable {
         pub fn new() -> Self {
             Self::default()
         }
-        #[ink(message)]
+        // #[ink(message)]
         pub fn get_pseudo_random(&mut self, max_value: u8) -> u8 {
             let seed = Self::env().block_timestamp();
             let mut input: Vec<u8> = Vec::new();
@@ -113,15 +124,17 @@ pub mod my_psp34_mintable {
         }
         
         #[ink(message)]
-        pub fn set_default(&mut self, account_id: AccountId) {
-            self.set_bad_uri(String::from("ipfs://QmV1VxGsrM4MLNn1qwR9Hmu5DGFfWjzHmhHFXpTT2fevMQ/"));
-            self.set_normal_uri(String::from("ipfs://QmTBf9GJLiw97v84Q7aEPPFHUXdyqXWC6AUp97VnLFZtWr/"));
-            self.set_good_uri(String::from("ipfs://QmQUxL1RSWbZAWhQfWnJJrMVZsPm4Stc5C64kRuSnXe56Q/"));
+        #[modifiers(only_owner)]
+        pub fn set_default(&mut self, account_id: AccountId) -> Result<(), PSP34Error> {
+            self.set_bad_uri(String::from("ipfs://QmV1VxGsrM4MLNn1qwR9Hmu5DGFfWjzHmhHFXpTT2fevMQ/"))?;
+            self.set_normal_uri(String::from("ipfs://QmTBf9GJLiw97v84Q7aEPPFHUXdyqXWC6AUp97VnLFZtWr/"))?;
+            self.set_good_uri(String::from("ipfs://QmQUxL1RSWbZAWhQfWnJJrMVZsPm4Stc5C64kRuSnXe56Q/"))?;
             self.set_your_apple(account_id, 10);
             self.set_your_money(account_id, 500);
+            Ok(())
         }
 
-        #[ink(message)]
+        // #[ink(message)]
         pub fn has_passed(&self, check_time :u64, last_time :u64) -> bool{
             let current_time = Self::env().block_timestamp();
             let time_since_last_time = current_time - last_time;
@@ -133,20 +146,22 @@ pub mod my_psp34_mintable {
             }
         }
 
-        #[ink(message)]
+        // #[ink(message)]
         pub fn five_minutes_has_passed(&self, last_time :u64) -> bool{
             self.has_passed(60,last_time)
         }
 
-        #[ink(message)]
+        // #[ink(message)]
         pub fn one_day_has_passed(&self, last_time :u64) -> bool{
             self.has_passed(60 * 60 * 24 ,last_time)
         }
     
         // normal
         #[ink(message)]
-        pub fn set_normal_uri(&mut self, normal_uri:String) {
+        #[modifiers(only_owner)]
+        pub fn set_normal_uri(&mut self, normal_uri:String) -> Result<(), PSP34Error> {
             self.normal_uri = normal_uri;
+            Ok(())
         }
 
         #[ink(message)]
@@ -156,8 +171,10 @@ pub mod my_psp34_mintable {
 
         // good
         #[ink(message)]
-        pub fn set_good_uri(&mut self, good_uri:String) {
+        #[modifiers(only_owner)]
+        pub fn set_good_uri(&mut self, good_uri:String) -> Result<(), PSP34Error> {
             self.good_uri = good_uri;
+            Ok(())
         }
 
         #[ink(message)]
@@ -167,8 +184,10 @@ pub mod my_psp34_mintable {
 
         // bad
         #[ink(message)]
-        pub fn set_bad_uri(&mut self, bad_uri:String) {
+        #[modifiers(only_owner)]
+        pub fn set_bad_uri(&mut self, bad_uri:String) -> Result<(), PSP34Error>{
             self.bad_uri = bad_uri;
+            Ok(())
         }
 
         #[ink(message)]
@@ -176,7 +195,7 @@ pub mod my_psp34_mintable {
             self.bad_uri.clone()
         }
 
-        #[ink(message)]
+        // #[ink(message)]
         pub fn ensure_exists_and_get_owner(&self, id: Id) -> Result<AccountId, PSP34Error> {
             let token_owner = self
                 .psp34
@@ -198,13 +217,13 @@ pub mod my_psp34_mintable {
             Ok(())
         }
 
-        #[ink(message)]
+        // #[ink(message)]
         pub fn set_full_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
             self.set_status(token_id, 0, 100, 100)?;
             Ok(())
         }
 
-        #[ink(message)]
+        // #[ink(message)]
         pub fn set_death_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
             self.set_status(token_id, 80, 0, 0)?;
             Ok(())
@@ -279,13 +298,11 @@ pub mod my_psp34_mintable {
                 happy: original_status.happy + number,
             };
         
-            self
-                .asset_status
-                .insert(&token_id, &new_status);
+            self.asset_status.insert(&token_id, &new_status);
             Ok(())
         }
 
-        #[ink(message)]
+        // #[ink(message)]
         pub fn set_lucky_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
             self.change_some_status(token_id.clone(),50)?;
             Ok(())
@@ -415,7 +432,7 @@ pub mod my_psp34_mintable {
                 .unwrap_or_default()
         }
 
-        #[ink(message)]
+        // #[ink(message)]
         pub fn set_your_apple(&mut self, account_id: AccountId, after_apple: u16) {
             self.apple_number.insert(&account_id, &after_apple);
         }
@@ -425,7 +442,7 @@ pub mod my_psp34_mintable {
             self.your_money.get(&account_id).unwrap_or_default()
         }
 
-        #[ink(message)]
+        // #[ink(message)]
         pub fn set_your_money(&mut self, account_id: AccountId, after_money: u64)  {
             self.your_money.insert(&account_id, &after_money);
         }
@@ -512,8 +529,19 @@ pub mod my_psp34_mintable {
                 Ok(())
             }
         }
-
         #[ink(message)]
+        pub fn buy_an_apple(&mut self, account_id: AccountId) -> Result<(), ContractError>{
+
+            // the apple price is 20
+            self.subtract_your_money(account_id, 20)?;
+    
+            // add 1
+            let after_apple = self.get_your_apple(account_id) + 1;
+            self.apple_number.insert(&account_id, &after_apple);
+            Ok(())
+        }
+
+        // #[ink(message)]
         pub fn subtract_your_apple(&mut self, account_id: AccountId) -> Result<(), ContractError> {
         
             // get apple number
@@ -531,7 +559,7 @@ pub mod my_psp34_mintable {
             }
         }
 
-        #[ink(message)]
+        // #[ink(message)]
         pub fn subtract_your_money(&mut self, account_id: AccountId, change_money: u64) -> Result<(), ContractError> {
         
             // get current game money
@@ -546,7 +574,7 @@ pub mod my_psp34_mintable {
             }
         }
 
-        #[ink(message)]
+        // #[ink(message)]
         pub fn plus_your_money(&mut self, account_id: AccountId, change_money: u64) {
         
             // get current game money
@@ -561,7 +589,7 @@ pub mod my_psp34_mintable {
             self.last_eaten.get(&token_id).unwrap_or(Default::default())
         }
         
-        #[ink(message)]
+        // #[ink(message)]
         pub fn set_last_eaten(&mut self, token_id: Id, current_time: u64) {
             self.last_eaten.insert(&token_id, &current_time);
         }
@@ -571,7 +599,7 @@ pub mod my_psp34_mintable {
             self.last_bonus.get(&account_id).unwrap_or(Default::default())
         }
         
-        #[ink(message)]
+        // #[ink(message)]
         pub fn set_last_bonus(&mut self, account_id: AccountId, current_time: u64) {
             self.last_bonus.insert(&account_id, &current_time);
         }
@@ -600,7 +628,20 @@ pub mod my_psp34_mintable {
             }
         }
 
-        #[ink(message)]
+        // #[ink(message)]
+
+
+
+        // internal function
+        pub fn is_account_id(&self, account_id: AccountId) -> bool {
+            let caller = Self::env().caller();
+            if caller == account_id {
+                true
+            } else {
+                false
+            }
+        }
+
         pub fn is_nft_owner(&self, token_id: Id) -> bool {
             let token_owner = self.owner_of(token_id.clone()).unwrap();
     
@@ -611,15 +652,6 @@ pub mod my_psp34_mintable {
             }
         }
 
-        #[ink(message)]
-        pub fn is_account_id(&self, account_id: AccountId) -> bool {
-            let caller = Self::env().caller();
-            if caller == account_id {
-                true
-            } else {
-                false
-            }
-        }
         
     
     }
