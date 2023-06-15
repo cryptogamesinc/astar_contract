@@ -110,18 +110,6 @@ pub mod my_psp34_mintable {
         pub fn new() -> Self {
             Self::default()
         }
-        // #[ink(message)]
-        pub fn get_pseudo_random(&mut self, max_value: u8) -> u8 {
-            let seed = Self::env().block_timestamp();
-            let mut input: Vec<u8> = Vec::new();
-            input.extend_from_slice(&seed.to_be_bytes());
-            input.extend_from_slice(&self.salt.to_be_bytes());
-            let mut output = <hash::Keccak256 as hash::HashOutput>::Type::default();
-            ink::env::hash_bytes::<hash::Keccak256>(&input, &mut output);
-            self.salt += 1;
-            let number = output[0] % (max_value + 1);
-            number
-        }
         
         #[ink(message)]
         #[modifiers(only_owner)]
@@ -132,28 +120,6 @@ pub mod my_psp34_mintable {
             self.set_your_apple(account_id, 10);
             self.set_your_money(account_id, 500);
             Ok(())
-        }
-
-        // #[ink(message)]
-        pub fn has_passed(&self, check_time :u64, last_time :u64) -> bool{
-            let current_time = Self::env().block_timestamp();
-            let time_since_last_time = current_time - last_time;
-            let duration_time = Duration::from_secs(check_time);
-            if Duration::from_millis(time_since_last_time) > duration_time {
-                true
-            } else {
-                false
-            }
-        }
-
-        // #[ink(message)]
-        pub fn five_minutes_has_passed(&self, last_time :u64) -> bool{
-            self.has_passed(60,last_time)
-        }
-
-        // #[ink(message)]
-        pub fn one_day_has_passed(&self, last_time :u64) -> bool{
-            self.has_passed(60 * 60 * 24 ,last_time)
         }
     
         // normal
@@ -195,15 +161,6 @@ pub mod my_psp34_mintable {
             self.bad_uri.clone()
         }
 
-        // #[ink(message)]
-        pub fn ensure_exists_and_get_owner(&self, id: Id) -> Result<AccountId, PSP34Error> {
-            let token_owner = self
-                .psp34
-                .owner_of(id.clone())
-                .ok_or(PSP34Error::TokenNotExists)?;
-            Ok(token_owner)
-        }
-
         #[ink(message)]
         pub fn set_status (
             &mut self,
@@ -214,18 +171,6 @@ pub mod my_psp34_mintable {
         ) -> Result<(), PSP34Error>{ 
             self.ensure_exists_and_get_owner(token_id.clone())?;
             self.asset_status.insert(&token_id,&Status {hungry,health,happy});
-            Ok(())
-        }
-
-        // #[ink(message)]
-        pub fn set_full_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
-            self.set_status(token_id, 0, 100, 100)?;
-            Ok(())
-        }
-
-        // #[ink(message)]
-        pub fn set_death_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
-            self.set_status(token_id, 80, 0, 0)?;
             Ok(())
         }
 
@@ -299,12 +244,6 @@ pub mod my_psp34_mintable {
             };
         
             self.asset_status.insert(&token_id, &new_status);
-            Ok(())
-        }
-
-        // #[ink(message)]
-        pub fn set_lucky_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
-            self.change_some_status(token_id.clone(),50)?;
             Ok(())
         }
 
@@ -432,19 +371,9 @@ pub mod my_psp34_mintable {
                 .unwrap_or_default()
         }
 
-        // #[ink(message)]
-        pub fn set_your_apple(&mut self, account_id: AccountId, after_apple: u16) {
-            self.apple_number.insert(&account_id, &after_apple);
-        }
-
         #[ink(message)]
         pub fn get_your_money(&self, account_id: AccountId) -> u64 {
             self.your_money.get(&account_id).unwrap_or_default()
-        }
-
-        // #[ink(message)]
-        pub fn set_your_money(&mut self, account_id: AccountId, after_money: u64)  {
-            self.your_money.insert(&account_id, &after_money);
         }
 
         #[ink(message)]
@@ -541,68 +470,15 @@ pub mod my_psp34_mintable {
             Ok(())
         }
 
-        // #[ink(message)]
-        pub fn subtract_your_apple(&mut self, account_id: AccountId) -> Result<(), ContractError> {
-        
-            // get apple number
-            let apple_number = self.get_your_apple(account_id);
-    
-            if apple_number < 1 {
-                Err(ContractError::NotEnoughApple.into())
-            } else {
-                let after_apple = apple_number - 1;
-    
-                self
-                .apple_number
-                .insert(&account_id, &after_apple);
-                Ok(())
-            }
-        }
-
-        // #[ink(message)]
-        pub fn subtract_your_money(&mut self, account_id: AccountId, change_money: u64) -> Result<(), ContractError> {
-        
-            // get current game money
-            let money = self.get_your_money(account_id);
-    
-            if money < change_money {
-                Err(ContractError::NotEnoughMoney.into())
-            } else {
-                let after_money = money - change_money;
-                self.set_your_money(account_id, after_money);
-                Ok(())
-            }
-        }
-
-        // #[ink(message)]
-        pub fn plus_your_money(&mut self, account_id: AccountId, change_money: u64) {
-        
-            // get current game money
-            let money = self.get_your_money(account_id);
-    
-            let after_money = money + change_money;
-            self.set_your_money(account_id, after_money);
-        }
-
         #[ink(message)]
         pub fn get_last_eaten(&self, token_id: Id) -> u64 {
             self.last_eaten.get(&token_id).unwrap_or(Default::default())
         }
         
-        // #[ink(message)]
-        pub fn set_last_eaten(&mut self, token_id: Id, current_time: u64) {
-            self.last_eaten.insert(&token_id, &current_time);
-        }
-        
         #[ink(message)]
         pub fn get_last_bonus(&self, account_id: AccountId) -> u64 {
             self.last_bonus.get(&account_id).unwrap_or(Default::default())
-        }
-        
-        // #[ink(message)]
-        pub fn set_last_bonus(&mut self, account_id: AccountId, current_time: u64) {
-            self.last_bonus.insert(&account_id, &current_time);
-        }
+        } 
 
         #[ink(message)]
         pub fn daily_bonus(&mut self, account_id: AccountId) -> Result<(), ContractError> {
@@ -628,11 +504,8 @@ pub mod my_psp34_mintable {
             }
         }
 
-        // #[ink(message)]
-
-
-
         // internal function
+
         pub fn is_account_id(&self, account_id: AccountId) -> bool {
             let caller = Self::env().caller();
             if caller == account_id {
@@ -652,7 +525,115 @@ pub mod my_psp34_mintable {
             }
         }
 
+        pub fn set_last_bonus(&mut self, account_id: AccountId, current_time: u64) {
+            self.last_bonus.insert(&account_id, &current_time);
+        }
+
+        pub fn set_last_eaten(&mut self, token_id: Id, current_time: u64) {
+            self.last_eaten.insert(&token_id, &current_time);
+        }
+
+        pub fn plus_your_money(&mut self, account_id: AccountId, change_money: u64) {
         
+            // get current game money
+            let money = self.get_your_money(account_id);
+    
+            let after_money = money + change_money;
+            self.set_your_money(account_id, after_money);
+        }
+
+        pub fn subtract_your_money(&mut self, account_id: AccountId, change_money: u64) -> Result<(), ContractError> {
+        
+            // get current game money
+            let money = self.get_your_money(account_id);
+    
+            if money < change_money {
+                Err(ContractError::NotEnoughMoney.into())
+            } else {
+                let after_money = money - change_money;
+                self.set_your_money(account_id, after_money);
+                Ok(())
+            }
+        }
+
+        pub fn subtract_your_apple(&mut self, account_id: AccountId) -> Result<(), ContractError> {
+        
+            // get apple number
+            let apple_number = self.get_your_apple(account_id);
+    
+            if apple_number < 1 {
+                Err(ContractError::NotEnoughApple.into())
+            } else {
+                let after_apple = apple_number - 1;
+    
+                self
+                .apple_number
+                .insert(&account_id, &after_apple);
+                Ok(())
+            }
+        }
+
+        pub fn set_your_money(&mut self, account_id: AccountId, after_money: u64)  {
+            self.your_money.insert(&account_id, &after_money);
+        }
+
+        pub fn set_your_apple(&mut self, account_id: AccountId, after_apple: u16) {
+            self.apple_number.insert(&account_id, &after_apple);
+        }
+
+        pub fn set_lucky_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
+            self.change_some_status(token_id.clone(),50)?;
+            Ok(())
+        }
+
+        pub fn set_full_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
+            self.set_status(token_id, 0, 100, 100)?;
+            Ok(())
+        }
+
+        pub fn set_death_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
+            self.set_status(token_id, 80, 0, 0)?;
+            Ok(())
+        }
+
+        pub fn ensure_exists_and_get_owner(&self, id: Id) -> Result<AccountId, PSP34Error> {
+            let token_owner = self
+                .psp34
+                .owner_of(id.clone())
+                .ok_or(PSP34Error::TokenNotExists)?;
+            Ok(token_owner)
+        }
+
+        pub fn has_passed(&self, check_time :u64, last_time :u64) -> bool{
+            let current_time = Self::env().block_timestamp();
+            let time_since_last_time = current_time - last_time;
+            let duration_time = Duration::from_secs(check_time);
+            if Duration::from_millis(time_since_last_time) > duration_time {
+                true
+            } else {
+                false
+            }
+        }
+        
+        pub fn five_minutes_has_passed(&self, last_time :u64) -> bool{
+            self.has_passed(60,last_time)
+        }
+
+        pub fn one_day_has_passed(&self, last_time :u64) -> bool{
+            self.has_passed(60 * 60 * 24 ,last_time)
+        }
+
+        pub fn get_pseudo_random(&mut self, max_value: u8) -> u8 {
+            let seed = Self::env().block_timestamp();
+            let mut input: Vec<u8> = Vec::new();
+            input.extend_from_slice(&seed.to_be_bytes());
+            input.extend_from_slice(&self.salt.to_be_bytes());
+            let mut output = <hash::Keccak256 as hash::HashOutput>::Type::default();
+            ink::env::hash_bytes::<hash::Keccak256>(&input, &mut output);
+            self.salt += 1;
+            let number = output[0] % (max_value + 1);
+            number
+        }
     
     }
 }
