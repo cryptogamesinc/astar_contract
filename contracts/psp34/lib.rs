@@ -121,7 +121,7 @@ pub mod my_psp34_mintable {
         pub fn set_owner(&mut self, owner: AccountId) {
             self.ownable.owner = owner;
         }
-        
+
         #[ink(message)]
         #[modifiers(only_owner)]
         pub fn set_default(&mut self, account_id: AccountId) -> Result<(), PSP34Error> {
@@ -196,11 +196,9 @@ pub mod my_psp34_mintable {
             //　get the current time
             let current_time = Self::env().block_timestamp();
     
-             // get the last eaten time
-             let last_checked_time = self
-                .last_eaten
-                .get(&token_id)
-                .unwrap_or(Default::default());
+            // get the last eaten time
+            let last_checked_time = self.last_eaten.get(&token_id).unwrap_or(Default::default());
+
             if last_checked_time == 0 {
                 return Some(Status {
                     hungry: 0,
@@ -642,6 +640,10 @@ pub mod my_psp34_mintable {
             let number = output[0] % (max_value + 1);
             number
         }
+
+        pub fn init_last_checked_time(&mut self, token_id: Id, timestamp: u64) {
+            self.last_eaten.insert(&token_id, &timestamp);
+        }
     
     }
 
@@ -657,9 +659,9 @@ pub mod my_psp34_mintable {
         fn set_caller(sender: AccountId) {
             ink::env::test::set_caller::<Environment>(sender);
         }
-        // fn set_block_timestamp(timestamp: u64) {
-        //     ink::env::test::set_block_timestamp::<Environment>(timestamp);
-        // }
+        fn set_block_timestamp(timestamp: u64) {
+            ink::env::test::set_block_timestamp::<Environment>(timestamp);
+        }
 
         #[ink::test]
         fn default_apple_value() {
@@ -689,6 +691,7 @@ pub mod my_psp34_mintable {
             assert_eq!(contract.get_your_apple(accounts.alice.clone()), 10);
             assert_eq!(contract.get_your_money(accounts.alice.clone()), 500);
         }
+        
         #[ink::test]
         fn get_current_status_works() {
             let accounts = default_accounts();
@@ -702,17 +705,34 @@ pub mod my_psp34_mintable {
             let initial_status = contract.get_status(token_id.clone()).unwrap();
             assert_eq!(initial_status, Status { hungry: 100, health: 100, happy: 100 });
 
+            // get current time. but return 0 in test environment
+            // let current_time = ink::env::block_timestamp::<ink::env::DefaultEnvironment>().into();
+        
+            // assume already eaten an apple at 1 second
+            contract.init_last_checked_time(token_id.clone(), 1 * 1000); // 1 second
+
             // Let's simulate the passage of time
-            // set_block_timestamp(61 * 1000); // 61 seconds
-            // let status_after_time = contract.get_current_status(token_id.clone()).unwrap();
+            set_block_timestamp(61 * 1000); // 61 seconds
+            let status_after_time = contract.get_current_status(token_id.clone()).unwrap();
             
             // // We need to manually calculate the expected new statuses because they are time-dependent
-            // let expected_status = Status {
-            //     hungry: 105, // 100 + 5 (1 minute passed, so status increases by 5)
-            //     health: 95, // 100 - 5
-            //     happy: 95, // 100 - 5
-            // };
-            // assert_eq!(status_after_time, expected_status);
+            let expected_status = Status {
+                hungry: 105, // 100 + 5 (1 minute passed, so status increases by 5)
+                health: 95, // 100 - 5
+                happy: 95, // 100 - 5
+            };
+            assert_eq!(status_after_time, expected_status);
+
+            set_block_timestamp(6000 * 1000); // 6000 seconds (100 minutes)
+
+            let status_after_many_time_passed = contract.get_current_status(token_id.clone()).unwrap();
+
+            let expected_status_many_time_passed = Status {
+                hungry: 595, // 100 + 5 * 99 (100 minute passed, so status increases by 5)
+                health: 0, // 100 - 5 * 99 , but not less than 0
+                happy: 0, // 100 - 5 * 99 , but not less than 0
+            };
+            assert_eq!(status_after_many_time_passed, expected_status_many_time_passed);
         }
         
  
