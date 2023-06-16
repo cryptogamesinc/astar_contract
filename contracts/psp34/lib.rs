@@ -110,6 +110,17 @@ pub mod my_psp34_mintable {
         pub fn new() -> Self {
             Self::default()
         }
+
+        #[ink(constructor)]
+        pub fn new_with_owner(owner: AccountId) -> Self {
+            let mut instance = Self::default();
+            instance.set_owner(owner);
+            instance
+        }
+
+        pub fn set_owner(&mut self, owner: AccountId) {
+            self.ownable.owner = owner;
+        }
         
         #[ink(message)]
         #[modifiers(only_owner)]
@@ -365,10 +376,7 @@ pub mod my_psp34_mintable {
 
         #[ink(message)]
         pub fn get_your_apple(&self, account_id: AccountId) -> u16 {
-            self
-                .apple_number
-                .get(&account_id)
-                .unwrap_or_default()
+            self.apple_number.get(&account_id).unwrap_or_default()
         }
 
         #[ink(message)]
@@ -635,5 +643,50 @@ pub mod my_psp34_mintable {
             number
         }
     
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use ink::env::test;
+
+        fn default_accounts() -> test::DefaultAccounts<ink::env::DefaultEnvironment> {
+            test::default_accounts::<ink::env::DefaultEnvironment>()
+        }
+
+        fn set_caller(sender: AccountId) {
+            ink::env::test::set_caller::<Environment>(sender);
+        }
+
+        #[ink::test]
+        fn default_apple_value() {
+            let contract = Contract::new();
+            let account = AccountId::from([0x0; 32]);
+            assert_eq!(contract.get_your_apple(account), 0);
+        }
+
+        #[ink::test]
+        fn set_and_get_apple() {
+            let mut contract = Contract::new();
+            let account = AccountId::from([0x1; 32]);
+            contract.set_your_apple(account, 10);
+            assert_eq!(contract.get_your_apple(account), 10);
+        }
+        #[ink::test]
+        fn set_default_works() {
+            let accounts = default_accounts();
+            let mut contract = Contract::new_with_owner(accounts.alice);
+
+            set_caller(accounts.alice);
+            assert!(contract.set_default(accounts.alice.clone()).is_ok());
+
+            assert_eq!(contract.get_bad_uri(), String::from("ipfs://QmV1VxGsrM4MLNn1qwR9Hmu5DGFfWjzHmhHFXpTT2fevMQ/"));
+            assert_eq!(contract.get_normal_uri(), String::from("ipfs://QmTBf9GJLiw97v84Q7aEPPFHUXdyqXWC6AUp97VnLFZtWr/"));
+            assert_eq!(contract.get_good_uri(), String::from("ipfs://QmQUxL1RSWbZAWhQfWnJJrMVZsPm4Stc5C64kRuSnXe56Q/"));
+            assert_eq!(contract.get_your_apple(accounts.alice.clone()), 10);
+            assert_eq!(contract.get_your_money(accounts.alice.clone()), 500);
+        }
+        
+ 
     }
 }
