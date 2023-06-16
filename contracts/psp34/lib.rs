@@ -640,10 +640,6 @@ pub mod my_psp34_mintable {
             let number = output[0] % (max_value + 1);
             number
         }
-
-        pub fn init_last_checked_time(&mut self, token_id: Id, timestamp: u64) {
-            self.last_eaten.insert(&token_id, &timestamp);
-        }
     
     }
 
@@ -709,7 +705,7 @@ pub mod my_psp34_mintable {
             // let current_time = ink::env::block_timestamp::<ink::env::DefaultEnvironment>().into();
         
             // assume already eaten an apple at 1 second
-            contract.init_last_checked_time(token_id.clone(), 1 * 1000); // 1 second
+            contract.set_last_eaten(token_id.clone(), 1 * 1000); // 1 second
 
             // Let's simulate the passage of time
             set_block_timestamp(61 * 1000); // 61 seconds
@@ -783,26 +779,56 @@ pub mod my_psp34_mintable {
         }
 
         #[ink::test]
-        fn buy_an_apple_works_twice() {
+        fn eat_an_apple_works() {
             let mut contract = Contract::default();
             let accounts = test::default_accounts::<Environment>();
-            
+            let token_id: Id = Id::U32(1);
+
+             // mint a new token
+            assert!(contract.mint(accounts.alice, token_id.clone()).is_ok());
+
             // 事前条件：まずアカウントに十分なお金を持たせます。
-            contract.set_your_money(accounts.alice, 100);
-    
-            // アクション：アカウントがりんごを購入します。
-            assert!(contract.buy_an_apple(accounts.alice).is_ok());
+            contract.set_your_money(accounts.alice, 50);
 
-            set_block_timestamp(60 * 1000); // 60 seconds (1 minutes)
+            // 事前条件：まずアカウントにリンゴを持たせます。
+            contract.buy_an_apple(accounts.alice).unwrap();
 
-            // アクション：アカウントがりんごを購入します。
-            assert!(contract.buy_an_apple(accounts.alice).is_ok());
-    
+            contract.set_last_eaten(token_id.clone(), 1 * 1000); // 1 second
+
+            set_block_timestamp(6000 * 1000); // 600 seconds (10 minutes)
             
+            // アクション：アカウントがリンゴを食べます。
+            assert!(contract.eat_an_apple(token_id, accounts.alice).is_ok());
+            
+            // // アサーション：リンゴを持っていないことを確認します。
+            assert_eq!(contract.get_your_apple(accounts.alice), 0);
         }
 
-        
-        
+        #[ink::test]
+        fn eat_an_apple_works_without_enough_time() {
+            let mut contract = Contract::default();
+            let accounts = test::default_accounts::<Environment>();
+            let token_id: Id = Id::U32(1);
+
+             // mint a new token
+            assert!(contract.mint(accounts.alice, token_id.clone()).is_ok());
+
+            // 事前条件：まずアカウントに十分なお金を持たせます。
+            contract.set_your_money(accounts.alice, 50);
+
+            // 事前条件：まずアカウントにリンゴを持たせます。
+            contract.buy_an_apple(accounts.alice).unwrap();
+
+            contract.set_last_eaten(token_id.clone(), 590 * 1000); // 590 seconds
+
+            set_block_timestamp(600 * 1000); // 600 seconds (only 10 seconds has passed)
+            
+            // アクション：アカウントがリンゴを食べます。
+            assert!(contract.eat_an_apple(token_id, accounts.alice).is_err());
+            
+            // // アサーション：リンゴを残っていることを確認します。
+            assert_eq!(contract.get_your_apple(accounts.alice), 1);
+        }
  
     }
 }
