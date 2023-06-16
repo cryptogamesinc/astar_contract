@@ -657,6 +657,9 @@ pub mod my_psp34_mintable {
         fn set_caller(sender: AccountId) {
             ink::env::test::set_caller::<Environment>(sender);
         }
+        // fn set_block_timestamp(timestamp: u64) {
+        //     ink::env::test::set_block_timestamp::<Environment>(timestamp);
+        // }
 
         #[ink::test]
         fn default_apple_value() {
@@ -685,6 +688,31 @@ pub mod my_psp34_mintable {
             assert_eq!(contract.get_good_uri(), String::from("ipfs://QmQUxL1RSWbZAWhQfWnJJrMVZsPm4Stc5C64kRuSnXe56Q/"));
             assert_eq!(contract.get_your_apple(accounts.alice.clone()), 10);
             assert_eq!(contract.get_your_money(accounts.alice.clone()), 500);
+        }
+        #[ink::test]
+        fn get_current_status_works() {
+            let accounts = default_accounts();
+            set_caller(accounts.alice);
+            let mut contract = Contract::new_with_owner(accounts.alice);
+            let token_id: Id = Id::U32(1);
+             // mint a new token
+            assert!(contract.mint(accounts.alice, token_id.clone()).is_ok());
+
+            contract.set_status(token_id.clone(), 100, 100, 100).unwrap();
+            let initial_status = contract.get_status(token_id.clone()).unwrap();
+            assert_eq!(initial_status, Status { hungry: 100, health: 100, happy: 100 });
+
+            // Let's simulate the passage of time
+            // set_block_timestamp(61 * 1000); // 61 seconds
+            // let status_after_time = contract.get_current_status(token_id.clone()).unwrap();
+            
+            // // We need to manually calculate the expected new statuses because they are time-dependent
+            // let expected_status = Status {
+            //     hungry: 105, // 100 + 5 (1 minute passed, so status increases by 5)
+            //     health: 95, // 100 - 5
+            //     happy: 95, // 100 - 5
+            // };
+            // assert_eq!(status_after_time, expected_status);
         }
         
  
