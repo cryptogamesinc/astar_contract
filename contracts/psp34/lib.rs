@@ -743,6 +743,65 @@ pub mod my_psp34_mintable {
             assert_eq!(total_status_many_time_passed, 0); // 0 + 0 - 595, but not less than 0
 
         }
+
+        #[ink::test]
+        fn buy_an_apple_works() {
+            let mut contract = Contract::default();
+            let accounts = test::default_accounts::<Environment>();
+            
+            // 事前条件：まずアカウントに十分なお金を持たせます。
+            contract.set_your_money(accounts.alice, 50);
+    
+            // アクション：アカウントがりんごを購入します。
+            assert!(contract.buy_an_apple(accounts.alice).is_ok());
+    
+            // アサーション：りんごを1つ持っていることを確認します。
+            assert_eq!(contract.get_your_apple(accounts.alice), 1);
+        }
+
+        #[ink::test]
+        fn buy_an_apple_fails_without_enough_money() {
+            let mut contract = Contract::default();
+            let accounts = test::default_accounts::<Environment>();
+
+            // 事前条件：アカウントはお金を持っていません。
+
+            // アクション：アカウントがりんごを購入しようとします。
+            // アサーション：購入は失敗します。
+            assert!(contract.buy_an_apple(accounts.alice).is_err());
+        }
+        #[ink::test]
+        fn get_your_apple_works() {
+            let contract = Contract::default();
+            let accounts = test::default_accounts::<Environment>();
+
+            // 事前条件：アカウントはりんごを持っていません。
+
+            // アクション：アカウントがりんごを持っているか確認します。
+            // アサーション：アカウントはりんごを持っていないので、0が返るはずです。
+            assert_eq!(contract.get_your_apple(accounts.alice), 0);
+        }
+
+        #[ink::test]
+        fn buy_an_apple_works_twice() {
+            let mut contract = Contract::default();
+            let accounts = test::default_accounts::<Environment>();
+            
+            // 事前条件：まずアカウントに十分なお金を持たせます。
+            contract.set_your_money(accounts.alice, 100);
+    
+            // アクション：アカウントがりんごを購入します。
+            assert!(contract.buy_an_apple(accounts.alice).is_ok());
+
+            set_block_timestamp(60 * 1000); // 60 seconds (1 minutes)
+
+            // アクション：アカウントがりんごを購入します。
+            assert!(contract.buy_an_apple(accounts.alice).is_ok());
+    
+            
+        }
+
+        
         
  
     }
