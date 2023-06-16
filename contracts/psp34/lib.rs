@@ -723,6 +723,10 @@ pub mod my_psp34_mintable {
             };
             assert_eq!(status_after_time, expected_status);
 
+            let total_status = contract.get_total_status(token_id.clone());
+
+            assert_eq!(total_status, 85); // 95 + 95 - 105
+
             set_block_timestamp(6000 * 1000); // 6000 seconds (100 minutes)
 
             let status_after_many_time_passed = contract.get_current_status(token_id.clone()).unwrap();
@@ -733,6 +737,11 @@ pub mod my_psp34_mintable {
                 happy: 0, // 100 - 5 * 99 , but not less than 0
             };
             assert_eq!(status_after_many_time_passed, expected_status_many_time_passed);
+
+            let total_status_many_time_passed = contract.get_total_status(token_id.clone());
+
+            assert_eq!(total_status_many_time_passed, 0); // 0 + 0 - 595, but not less than 0
+
         }
         
  
