@@ -531,6 +531,20 @@ pub mod my_psp34_mintable {
             Ok(())
         }
 
+        #[ink(message)]
+        pub fn buy_game_money(&mut self, target_account_id:AccountId, to: AccountId, data: Vec<u8>) -> Result<(), ContractError>{
+            let interface: Psp22ContractRef = ink::env::call::FromAccountId::from_account_id(target_account_id);
+            let from = Self::env().caller();
+            let money = interface.balance_of_contract(from);
+            if money < 500 {
+                Err(ContractError::NotEnoughMoney.into())
+            } else {
+                self.call_psp22_transfer(target_account_id, to, 500, data)?;
+                self.plus_your_money(from, 300);
+                Ok(())
+            }
+        }
+
         // internal function
 
         pub fn is_account_id(&self, account_id: AccountId) -> bool {
