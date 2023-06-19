@@ -6,6 +6,9 @@ pub mod my_psp34_mintable {
     use openbrush::{
         contracts::{
             ownable::*,
+            psp22::extensions::{
+                mintable::*,
+            },
             psp34::extensions::{
                 enumerable::*,
                 mintable::*,
@@ -18,6 +21,8 @@ pub mod my_psp34_mintable {
         storage::Mapping,
         modifiers,
     };
+
+    use my_psp22_mintable::{ Psp22ContractRef};
     
     use ink::env::hash;
 
@@ -42,6 +47,7 @@ pub mod my_psp34_mintable {
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum ContractError {
+        PSP22Error,
         PSP34Error,
         NotEnoughMoney,
         NotEnoughApple,
@@ -49,11 +55,18 @@ pub mod my_psp34_mintable {
         TimeHasNotPassed
     }
 
+    impl From<PSP22Error> for ContractError {
+        fn from(_: PSP22Error) -> Self {
+            Self::PSP22Error
+        }
+    }
+
     impl From<PSP34Error> for ContractError {
         fn from(_: PSP34Error) -> Self {
             Self::PSP34Error
         }
     }
+    
 
     #[derive(Default, Storage)]
     #[ink(storage)]
@@ -508,6 +521,14 @@ pub mod my_psp34_mintable {
 
             Ok(())
             }
+        }
+
+        #[ink(message)]
+        pub fn call_psp22_transfer(&mut self, target_account_id:AccountId, to: AccountId, value: Balance, data: Vec<u8>)  -> Result<(), PSP22Error> {
+            let mut interface: Psp22ContractRef = ink::env::call::FromAccountId::from_account_id(target_account_id);
+            let from = Self::env().caller();
+            interface.transfer_from_contract(from, to, value, data)?;
+            Ok(())
         }
 
         // internal function
