@@ -780,13 +780,10 @@ pub mod my_psp34_mintable {
             let mut contract = Contract::default();
             let accounts = test::default_accounts::<Environment>();
             
-            // 事前条件：まずアカウントに十分なお金を持たせます。
             contract.set_your_money(accounts.alice, 50);
     
-            // アクション：アカウントがりんごを購入します。
             assert!(contract.buy_an_apple(accounts.alice).is_ok());
     
-            // アサーション：りんごを1つ持っていることを確認します。
             assert_eq!(contract.get_your_apple(accounts.alice), 1);
         }
 
@@ -795,10 +792,6 @@ pub mod my_psp34_mintable {
             let mut contract = Contract::default();
             let accounts = test::default_accounts::<Environment>();
 
-            // 事前条件：アカウントはお金を持っていません。
-
-            // アクション：アカウントがりんごを購入しようとします。
-            // アサーション：購入は失敗します。
             assert!(contract.buy_an_apple(accounts.alice).is_err());
         }
         #[ink::test]
@@ -806,10 +799,6 @@ pub mod my_psp34_mintable {
             let contract = Contract::default();
             let accounts = test::default_accounts::<Environment>();
 
-            // 事前条件：アカウントはりんごを持っていません。
-
-            // アクション：アカウントがりんごを持っているか確認します。
-            // アサーション：アカウントはりんごを持っていないので、0が返るはずです。
             assert_eq!(contract.get_your_apple(accounts.alice), 0);
         }
 
@@ -819,23 +808,18 @@ pub mod my_psp34_mintable {
             let accounts = test::default_accounts::<Environment>();
             let token_id: Id = Id::U32(1);
 
-             // mint a new token
             assert!(contract.mint(accounts.alice, token_id.clone()).is_ok());
 
-            // 事前条件：まずアカウントに十分なお金を持たせます。
             contract.set_your_money(accounts.alice, 50);
 
-            // 事前条件：まずアカウントにリンゴを持たせます。
             contract.buy_an_apple(accounts.alice).unwrap();
 
             contract.set_last_eaten(token_id.clone(), 1 * 1000); // 1 second
 
             set_block_timestamp(6000 * 1000); // 600 seconds (10 minutes)
             
-            // アクション：アカウントがリンゴを食べます。
             assert!(contract.eat_an_apple(token_id, accounts.alice).is_ok());
             
-            // // アサーション：リンゴを持っていないことを確認します。
             assert_eq!(contract.get_your_apple(accounts.alice), 0);
         }
 
@@ -848,20 +832,16 @@ pub mod my_psp34_mintable {
              // mint a new token
             assert!(contract.mint(accounts.alice, token_id.clone()).is_ok());
 
-            // 事前条件：まずアカウントに十分なお金を持たせます。
             contract.set_your_money(accounts.alice, 50);
 
-            // 事前条件：まずアカウントにリンゴを持たせます。
             contract.buy_an_apple(accounts.alice).unwrap();
 
             contract.set_last_eaten(token_id.clone(), 590 * 1000); // 590 seconds
 
             set_block_timestamp(600 * 1000); // 600 seconds (only 10 seconds has passed)
             
-            // アクション：アカウントがリンゴを食べます。
             assert!(contract.eat_an_apple(token_id, accounts.alice).is_err());
             
-            // // アサーション：リンゴを残っていることを確認します。
             assert_eq!(contract.get_your_apple(accounts.alice), 1);
         }
  
