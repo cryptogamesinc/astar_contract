@@ -52,7 +52,8 @@ pub mod my_psp34_mintable {
         NotEnoughMoney,
         NotEnoughApple,
         InvalidAccountId,
-        TimeHasNotPassed
+        TimeHasNotPassed,
+        AlreadyHadOneNft
     }
 
     impl From<PSP22Error> for ContractError {
@@ -109,6 +110,9 @@ pub mod my_psp34_mintable {
 
         // staked game noney the account has
         pub your_staked_money: Mapping<AccountId, u64>,
+
+        // tokenId
+        pub current_token_id: u32,
     }
 
     impl PSP34 for Contract {}
@@ -543,6 +547,24 @@ pub mod my_psp34_mintable {
                 self.plus_your_money(from, 300);
                 Ok(())
             }
+        }
+
+        #[ink(message)]
+        pub fn claim_a_nft(&mut self) -> Result<(), ContractError> {
+
+            let to = Self::env().caller();
+
+            let token_id = self.current_token_id.checked_add(1).ok_or(ContractError::InvalidAccountId)?;
+
+            let nft_balance = self.balance_of(to.clone());
+
+            if nft_balance > 0 {
+                Err(ContractError::AlreadyHadOneNft.into())
+            } else {
+                self.mint(to,Id::U32(token_id))?;
+                Ok(())
+            }
+            
         }
 
         // internal function
