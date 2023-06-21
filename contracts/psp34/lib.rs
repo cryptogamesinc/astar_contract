@@ -1,4 +1,4 @@
-#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(feature = "std"), no_std, no_main)]
 #![feature(min_specialization)]
 
 #[openbrush::contract]
@@ -53,7 +53,8 @@ pub mod my_psp34_mintable {
         NotEnoughApple,
         InvalidAccountId,
         TimeHasNotPassed,
-        AlreadyHadOneNft
+        AlreadyHadOneNft,
+        NumberOverflowError,
     }
 
     impl From<PSP22Error> for ContractError {
@@ -554,7 +555,7 @@ pub mod my_psp34_mintable {
 
             let to = Self::env().caller();
 
-            let token_id = self.current_token_id.checked_add(1).ok_or(ContractError::InvalidAccountId)?;
+            let token_id = self.current_token_id.checked_add(1).ok_or(ContractError::NumberOverflowError)?;
 
             let nft_balance = self.balance_of(to.clone());
 
