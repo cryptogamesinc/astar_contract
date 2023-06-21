@@ -113,7 +113,7 @@ pub mod my_psp34_mintable {
         pub your_staked_money: Mapping<AccountId, u64>,
 
         // tokenId
-        pub current_token_id: u32,
+        pub current_token_id: u64,
     }
 
     impl PSP34 for Contract {}
@@ -193,29 +193,29 @@ pub mod my_psp34_mintable {
         #[ink(message)]
         pub fn set_status (
             &mut self,
-            token_id: Id, 
+            token_id: u64, 
             hungry: u32,
             health: u32,
             happy: u32
         ) -> Result<(), PSP34Error>{ 
-            self.ensure_exists_and_get_owner(token_id.clone())?;
-            self.asset_status.insert(&token_id,&Status {hungry,health,happy});
+            self.ensure_exists_and_get_owner(Id::U64(token_id).clone())?;
+            self.asset_status.insert(&Id::U64(token_id),&Status {hungry,health,happy});
             Ok(())
         }
 
         #[ink(message)]
-        pub fn get_status(&self, token_id: Id) -> Option<Status> {
-            self.asset_status.get(&token_id)
+        pub fn get_status(&self, token_id: u64) -> Option<Status> {
+            self.asset_status.get(&Id::U64(token_id))
         }
 
         #[ink(message)]
-        pub fn get_current_status(&self, token_id: Id) -> Option<Status> {
+        pub fn get_current_status(&self, token_id: u64) -> Option<Status> {
 
             //　get the current time
             let current_time = Self::env().block_timestamp();
     
             // get the last eaten time
-            let last_checked_time = self.last_eaten.get(&token_id).unwrap_or(Default::default());
+            let last_checked_time = self.last_eaten.get(&Id::U64(token_id)).unwrap_or(Default::default());
 
             if last_checked_time == 0 {
                 return Some(Status {
@@ -250,8 +250,8 @@ pub mod my_psp34_mintable {
         }
 
         #[ink(message)]
-        pub fn change_some_status(&mut self, token_id: Id, number: u32) -> Result<(), PSP34Error> {
-            self.ensure_exists_and_get_owner(token_id.clone())?;
+        pub fn change_some_status(&mut self, token_id: u64, number: u32) -> Result<(), PSP34Error> {
+            self.ensure_exists_and_get_owner(Id::U64(token_id).clone())?;
             let original_status = self.get_current_status(token_id.clone()).unwrap_or_else(|| {
                 // In case the token_id doesn't exist in the asset_status map, we just return a default status with all fields set to 0.
                 Status { hungry: 0, health: 0, happy: 0 }
@@ -270,12 +270,12 @@ pub mod my_psp34_mintable {
                 happy: original_status.happy + number,
             };
         
-            self.asset_status.insert(&token_id, &new_status);
+            self.asset_status.insert(&Id::U64(token_id), &new_status);
             Ok(())
         }
 
         #[ink(message)]
-        pub fn get_total_status(&self, token_id: Id) -> u32 {
+        pub fn get_total_status(&self, token_id: u64) -> u32 {
             let original_status = self.get_current_status(token_id.clone()).unwrap_or_else(|| {
                 // In case the token_id doesn't exist in the asset_status map, we just return a default status with all fields set to 0.
                 Status { hungry: 0, health: 0, happy: 0 }
@@ -293,7 +293,7 @@ pub mod my_psp34_mintable {
         }
 
         #[ink(message)]
-        pub fn get_condition(&self , token_id: Id) -> u32 {
+        pub fn get_condition(&self , token_id: u64) -> u32 {
             let condition = self.get_total_status(token_id);
             // bad condition
             if condition < 100 {
@@ -310,7 +310,7 @@ pub mod my_psp34_mintable {
         }
 
         #[ink(message)]
-        pub fn get_condition_url(&self , token_id: Id) -> String {
+        pub fn get_condition_url(&self , token_id: u64) -> String {
             let condition = self.get_condition(token_id);
             if condition == 0 {
                 self.get_bad_uri()
@@ -322,10 +322,10 @@ pub mod my_psp34_mintable {
         }
 
         #[ink(message)]
-        pub fn eat_an_apple(&mut self, token_id: Id, account_id: AccountId) -> Result<(),ContractError> {
+        pub fn eat_an_apple(&mut self, token_id: u64, account_id: AccountId) -> Result<(),ContractError> {
 
             // get last eaten time
-            let last_eaten = self.get_last_eaten(token_id.clone());
+            let last_eaten = self.get_last_eaten(Id::U64(token_id).clone());
             // get whether time passed
             let has_passed = self.five_minutes_has_passed(last_eaten);
 
@@ -335,7 +335,7 @@ pub mod my_psp34_mintable {
                 // get current time 
                 let current_time = Self::env().block_timestamp();
                 //  set last eaten time
-                self.set_last_eaten(token_id.clone(), current_time);
+                self.set_last_eaten(Id::U64(token_id).clone(), current_time);
                 //  minus apple
                 self.subtract_your_apple(account_id)?;
 
@@ -357,8 +357,8 @@ pub mod my_psp34_mintable {
             }
         }
         #[ink(message)]
-        pub fn token_uri(&self , token_id: Id) -> String {
-            let id_string:ink::prelude::string::String = match token_id.clone() {
+        pub fn token_uri(&self , token_id: u64) -> String {
+            let id_string:ink::prelude::string::String = match Id::U64(token_id).clone() {
                 Id::U8(u8) => {
                     let tmp: u8 = u8;
                     tmp.to_string()
@@ -562,7 +562,7 @@ pub mod my_psp34_mintable {
             if nft_balance > 0 {
                 Err(ContractError::AlreadyHadOneNft.into())
             } else {
-                self.mint(to,Id::U32(token_id))?;
+                self.mint(to,Id::U64(token_id))?;
                 Ok(())
             }
             
@@ -645,17 +645,17 @@ pub mod my_psp34_mintable {
             self.apple_number.insert(&account_id, &after_apple);
         }
 
-        pub fn set_lucky_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
+        pub fn set_lucky_status(&mut self, token_id: u64) -> Result<(), PSP34Error> {
             self.change_some_status(token_id.clone(),50)?;
             Ok(())
         }
 
-        pub fn set_full_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
+        pub fn set_full_status(&mut self, token_id: u64) -> Result<(), PSP34Error> {
             self.set_status(token_id, 0, 100, 100)?;
             Ok(())
         }
 
-        pub fn set_death_status(&mut self, token_id: Id) -> Result<(), PSP34Error> {
+        pub fn set_death_status(&mut self, token_id: u64) -> Result<(), PSP34Error> {
             self.set_status(token_id, 80, 0, 0)?;
             Ok(())
         }
