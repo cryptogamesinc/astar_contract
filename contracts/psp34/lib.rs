@@ -86,7 +86,7 @@ pub mod my_psp34_mintable {
         pub asset_status: Mapping<Id, Status>,
 
         // this is three pattern uri
-
+        
         pub normal_uri: String,
         pub good_uri: String,
         pub bad_uri: String,
@@ -706,6 +706,9 @@ pub mod my_psp34_mintable {
         use super::*;
         use ink::env::test;
 
+        // #[rustfmt::skip]
+        // use ink_e2e::{build_message};
+
         fn default_accounts() -> test::DefaultAccounts<ink::env::DefaultEnvironment> {
             test::default_accounts::<ink::env::DefaultEnvironment>()
         }
@@ -716,6 +719,11 @@ pub mod my_psp34_mintable {
         fn set_block_timestamp(timestamp: u64) {
             ink::env::test::set_block_timestamp::<Environment>(timestamp);
         }
+        // #[ink_e2e::test]
+        // async fn get_and_set() -> E2EResult<()> {
+        //     let constructor = ContractRef::new();
+        //     Ok(())
+        // }
 
         #[ink::test]
         fn default_apple_value() {
@@ -751,9 +759,9 @@ pub mod my_psp34_mintable {
             let accounts = default_accounts();
             set_caller(accounts.alice);
             let mut contract = Contract::new_with_owner(accounts.alice);
-            let token_id: Id = Id::U32(1);
+            let token_id: u64 = 1;
              // mint a new token
-            assert!(contract.mint(accounts.alice, token_id.clone()).is_ok());
+            assert!(contract.mint(accounts.alice, Id::U64(token_id).clone()).is_ok());
 
             contract.set_status(token_id.clone(), 100, 100, 100).unwrap();
             let initial_status = contract.get_status(token_id.clone()).unwrap();
@@ -763,7 +771,7 @@ pub mod my_psp34_mintable {
             // let current_time = ink::env::block_timestamp::<ink::env::DefaultEnvironment>().into();
         
             // assume already eaten an apple at 1 second
-            contract.set_last_eaten(token_id.clone(), 1 * 1000); // 1 second
+            contract.set_last_eaten(Id::U64(token_id).clone(), 1 * 1000); // 1 second
 
             // Let's simulate the passage of time
             set_block_timestamp(61 * 1000); // 61 seconds
@@ -829,15 +837,15 @@ pub mod my_psp34_mintable {
         fn eat_an_apple_works() {
             let mut contract = Contract::default();
             let accounts = test::default_accounts::<Environment>();
-            let token_id: Id = Id::U32(1);
+            let token_id: u64 = 1;
 
-            assert!(contract.mint(accounts.alice, token_id.clone()).is_ok());
+            assert!(contract.mint(accounts.alice, Id::U64(token_id).clone()).is_ok());
 
             contract.set_your_money(accounts.alice, 50);
 
             contract.buy_an_apple(accounts.alice).unwrap();
 
-            contract.set_last_eaten(token_id.clone(), 1 * 1000); // 1 second
+            contract.set_last_eaten(Id::U64(token_id).clone(), 1 * 1000); // 1 second
 
             set_block_timestamp(6000 * 1000); // 600 seconds (10 minutes)
             
@@ -850,16 +858,16 @@ pub mod my_psp34_mintable {
         fn eat_an_apple_works_without_enough_time() {
             let mut contract = Contract::default();
             let accounts = test::default_accounts::<Environment>();
-            let token_id: Id = Id::U32(1);
+            let token_id: u64 = 1;
 
              // mint a new token
-            assert!(contract.mint(accounts.alice, token_id.clone()).is_ok());
+            assert!(contract.mint(accounts.alice, Id::U64(token_id).clone()).is_ok());
 
             contract.set_your_money(accounts.alice, 50);
 
             contract.buy_an_apple(accounts.alice).unwrap();
 
-            contract.set_last_eaten(token_id.clone(), 590 * 1000); // 590 seconds
+            contract.set_last_eaten(Id::U64(token_id).clone(), 590 * 1000); // 590 seconds
 
             set_block_timestamp(600 * 1000); // 600 seconds (only 10 seconds has passed)
             
