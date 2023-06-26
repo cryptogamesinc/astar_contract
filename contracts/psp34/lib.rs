@@ -563,6 +563,7 @@ pub mod my_psp34_mintable {
                 Err(ContractError::AlreadyHadOneNft.into())
             } else {
                 self.mint(to,Id::U64(token_id))?;
+                self.current_token_id = token_id;
                 Ok(())
             }
             
