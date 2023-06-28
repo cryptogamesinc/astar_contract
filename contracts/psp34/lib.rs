@@ -22,14 +22,18 @@ pub mod my_psp34_mintable {
         modifiers,
     };
 
+    use openbrush::contracts::psp22::psp22_external::PSP22;
+
     use my_psp22_mintable::{ Psp22ContractRef};
     
     use ink::env::hash;
 
-    use ink::prelude::{
-        string::ToString,
-        vec::Vec,
-    };
+    use ink::prelude::string::ToString;
+
+    // use ink::prelude::{
+    //     string::ToString,
+    //     vec::Vec,
+    // };
 
     use core::{time::Duration};
 
@@ -529,7 +533,7 @@ pub mod my_psp34_mintable {
         }
 
         #[ink(message)]
-        pub fn call_psp22_transfer(&mut self, target_account_id:AccountId, to: AccountId, value: Balance, data: Vec<u8>)  -> Result<(), PSP22Error> {
+        pub fn call_psp22_transfer(&mut self, target_account_id:AccountId, to: AccountId, value: Balance, data: String)  -> Result<(), PSP22Error> {
             let mut interface: Psp22ContractRef = ink::env::call::FromAccountId::from_account_id(target_account_id);
             let from = Self::env().caller();
             interface.transfer_from_contract(from, to, value, data)?;
@@ -537,10 +541,10 @@ pub mod my_psp34_mintable {
         }
 
         #[ink(message)]
-        pub fn buy_game_money(&mut self, target_account_id:AccountId, to: AccountId, data: Vec<u8>) -> Result<(), ContractError>{
+        pub fn buy_game_money(&mut self, target_account_id:AccountId, to: AccountId, data: String) -> Result<(), ContractError>{
             let interface: Psp22ContractRef = ink::env::call::FromAccountId::from_account_id(target_account_id);
             let from = Self::env().caller();
-            let money = interface.balance_of_contract(from);
+            let money = interface.balance_of(from);
             if money < 500 {
                 Err(ContractError::NotEnoughMoney.into())
             } else {
@@ -690,7 +694,7 @@ pub mod my_psp34_mintable {
 
         pub fn get_pseudo_random(&mut self, max_value: u8) -> u8 {
             let seed = Self::env().block_timestamp();
-            let mut input: Vec<u8> = Vec::new();
+            let mut input: String = String::new();
             input.extend_from_slice(&seed.to_be_bytes());
             input.extend_from_slice(&self.salt.to_be_bytes());
             let mut output = <hash::Keccak256 as hash::HashOutput>::Type::default();
@@ -884,13 +888,13 @@ pub mod my_psp34_mintable {
         #[rustfmt::skip]
         use super::*;
         #[rustfmt::skip]
-        use ink_e2e::build_message;
+        use ink_e2e::{build_message};
         use openbrush::test_utils::accounts;
 
         type E2EResult<T> = Result<T, Box<dyn std::error::Error>>;
 
         #[ink_e2e::test]
-        async fn it_works(mut client: ink_e2e::Client<C, E>) -> E2EResult<()> {
+        async fn it_works() -> E2EResult<()> {
             // let constructor = Psp22ContractRef::new(1000);
             // let account = AccountId::from([0x0; 32]);
 
