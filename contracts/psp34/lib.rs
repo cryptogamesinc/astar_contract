@@ -885,32 +885,42 @@ pub mod my_psp34_mintable {
 
     #[cfg(all(test, feature = "e2e-tests"))]
     mod e2e_tests {
-        #[rustfmt::skip]
-        use super::*;
-        #[rustfmt::skip]
-        use ink_e2e::{build_message};
-        use openbrush::test_utils::accounts;
+        use my_psp22_mintable::my_psp22_mintable::Psp22ContractRef;
+        use ink::primitives::AccountId;
+        use ink_e2e::build_message;
+        use openbrush::contracts::psp22::psp22_external::PSP22;
 
         type E2EResult<T> = Result<T, Box<dyn std::error::Error>>;
 
-        #[ink_e2e::test]
+        /// Helper to get Bob's account_id from `ink_e2e::bob()` PairSigner
+        fn get_bob_account_id() -> AccountId {
+            let bob = ink_e2e::bob::<ink_e2e::PolkadotConfig>();
+            let bob_account_id_32 = bob.account_id();
+            let bob_account_id = AccountId::try_from(bob_account_id_32.as_ref()).unwrap();
+
+            bob_account_id
+        }
+
+        #[ink_e2e::test(additional_contracts = "psp22/Cargo.toml psp34/Cargo.toml")]
         async fn it_works() -> E2EResult<()> {
-            // let constructor = Psp22ContractRef::new(1000);
-            // let account = AccountId::from([0x0; 32]);
+            let constructor = Psp22ContractRef::new(1000);
 
-            // // when
-            // let contract_acc_id = client
-            //     .instantiate("my_psp22_mintable", &ink_e2e::bob(), constructor, 0, None)
-            //     .await
-            //     .expect("instantiate failed")
-            //     .account_id;
+            // when
+            let contract_acc_id = client
+                .instantiate("my_psp22_mintable", &ink_e2e::bob(), constructor, 0, None)
+                .await
+                .expect("instantiate failed")
+                .account_id;
 
-            // // then
-            // let get = build_message::<Psp22ContractRef>(contract_acc_id.clone())
-            //     .call(|my_psp22_mintable| my_psp22_mintable.balance_of_contract(accounts().bob));
+            // then
+            let get = build_message::<Psp22ContractRef>(contract_acc_id.clone())
+                .call(|my_psp22_mintable| my_psp22_mintable.balance_of(get_bob_account_id()));
             
-            // let get_res = client.call_dry_run(&ink_e2e::bob(), &get, 0, None).await;
-            // assert!(matches!(get_res.return_value(), 0));
+            let get_res = client
+                .call_dry_run(&ink_e2e::bob(), &get, 0, None)
+                .await
+                .return_value();
+            assert_eq!(get_res, 1000);
 
             Ok(())  
 

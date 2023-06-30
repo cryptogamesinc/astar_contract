@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "psp22",
+    "psp34",
+]
